@@ -227,9 +227,9 @@
 
 
 """
-langmod_rnn2.py
+langmod_rnn.py
 
-Non-object oriented version of Tensorflow code for the LSTM Language Model.
+Object oriented version of Tensorflow code for the LSTM Language Model.
 """
 from collections import defaultdict
 import numpy as np
@@ -237,21 +237,131 @@ import re
 import tensorflow as tf
 import time
 
-BOOK_PATH = "dracula.txt"
+FLAGS = tf.app.flags.FLAGS
+
+# Preprocessing Parameters
+tf.app.flags.DEFINE_integer('max_vocab_size', 8000, 'Maximum Vocabulary Size.')
+
+# Model Parameters
+tf.app.flags.DEFINE_integer('num_steps', 20, 'Number of unrolled steps before backprop.')
+tf.app.flags.DEFINE_integer('embedding_size', 50, 'Size of the Embeddings.')
+tf.app.flags.DEFINE_integer('hidden_size', 256, 'Size of the LSTM Layer.')
+
+# Training Parameters
+tf.app.flags.DEFINE_integer('num_epochs', 5, 'Number of Training Epochs.')
+tf.app.flags.DEFINE_integer('batch_size', 50, 'Size of a batch (for training).')
+tf.app.flags.DEFINE_float('learning_rate', 1e-4, 'Learning rate for Adam Optimizer.')
+tf.app.flags.DEFINE_float('dropout_prob', 0.5, 'Keep probability, for dropout.')
+tf.app.flags.DEFINE_integer('eval_every', 10000, 'Print statistics every eval_every words.')
+
+BOOK_PATH = "data/crime_punishment.txt"
 STOP = "*STOP*"
 UNK = "*UNK*"
 UNK_ID = 0
 STOP_ID = 1
 
-MAX_VOCAB_SIZE = 8000
-BSZ = 50
-NUM_STEPS = 20
-EMBEDDING_SIZE = 50
-HIDDEN_SIZE = 256
-DROPOUT_PROB = 0.5
-LEARNING_RATE = 1e-4
-NUM_EPOCHS = 5
-EVAL_EVERY = 10000
+
+class RNNLangmod():
+    def __init__(self, vocab_size, embedding_size, num_steps, hidden_size, batch_size,
+                 learning_rate):
+        """
+        Instantiate an RNNLangmod Model, with the necessary hyperparameters.
+
+        :param vocab_size: Size of the vocabulary.
+        :param num_steps: Number of words to feed into LSTM before performing a gradient update.
+        :param hidden_size: Size of the LSTM Layer.
+        :param num_layers: Number of stacked LSTM Layers in the model.
+        :param batch_size: Batch size (for training).
+        :param learning_rate: Learning rate for Adam Optimizer
+        """
+        self.vocab_size, self.embedding_size = vocab_size, embedding_size
+        self.hidden, self.num_steps = hidden_size, num_steps
+        self.bsz, self.learning_rate = batch_size, learning_rate
+
+        # Setup Placeholders
+        self.X = tf.placeholder(tf.int32, shape=[None, self.num_steps])
+        self.Y = tf.placeholder(tf.int32, shape=[None, self.num_steps])
+        self.keep_prob = tf.placeholder(tf.float32)
+
+        # Instantiate Network Weights
+        self.instantiate_weights()
+
+        # Build the Inference Graph
+        self.logits, self.final_state = self.inference()
+
+        # Build the Loss Computation
+        self.loss_val = self.loss()
+
+        # Build the Training Operation
+        self.train_op = self.train()
+
+    def instantiate_weights(self):
+        """
+        Instantiate the network Variables, for the Embedding, LSTM, and Output Layers.
+        """
+        # Embedding Matrix
+        self.E = self.weight_variable([self.vocab_size, self.embedding_size], 'Embedding')
+
+        # Basic LSTM Cell
+        self.cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden)
+        self.initial_state = self.cell.zero_state(self.bsz, tf.float32)
+
+        # Softmax Output
+        self.softmax_w = self.weight_variable([self.hidden, self.vocab_size], 'Softmax_Weight')
+        self.softmax_b = self.weight_variable([self.vocab_size], 'Softmax_Bias')
+
+    def inference(self):
+        """
+        Build the inference computation graph for the model, going from the input to the output
+        logits (before final softmax activation).
+
+        :return Tuple of 2D Logits Tensor [bsz * steps, vocab], and Final State [num_layers]
+        """
+        # Feed input through the Embedding Layer, Dropout.
+        emb = tf.nn.embedding_lookup(self.E, self.X)                   # Shape [bsz, steps, hidden]
+        drop_emb = tf.nn.dropout(emb, self.keep_prob)
+
+        # Feed input through dynamic_rnn
+        out, f_state = tf.nn.dynamic_rnn(self.cell, drop_emb,          # Shape [bsz, steps, hidden]
+                                         initial_state=self.initial_state)
+
+        # Reshape the outputs into a single 2D Tensor
+        outputs = tf.reshape(out, [-1, self.hidden])                   # Shape [bsz * steps, hidden]
+
+        # Feed through final layer, compute logits
+        logits = tf.matmul(outputs, self.softmax_w) + self.softmax_b   # Shape [bsz * steps, vocab]
+        return logits, f_state
+
+    def loss(self):
+        """
+        Build the sequence cross-entropy loss by example computation.
+
+        :return Scalar representing sequence loss.
+        """
+        seq_loss = tf.nn.seq2seq.sequence_loss_by_example([self.logits],
+                                                          [tf.reshape(self.Y, [-1])],
+                                                          [tf.ones([self.bsz * self.num_steps])])
+        loss = tf.reduce_sum(seq_loss) / self.bsz
+        return loss
+
+    def train(self):
+        """
+        Build the training operation, using the sequence loss by example and an Adam Optimizer.
+
+        :return Training Operation
+        """
+        optimizer = tf.train.AdamOptimizer(self.learning_rate)
+        return optimizer.minimize(self.loss_val)
+
+    @staticmethod
+    def weight_variable(shape, name):
+        initial = tf.truncated_normal(shape, stddev=0.1)
+        return tf.Variable(initial, name=name)
+
+    @staticmethod
+    def bias_variable(shape, name):
+        initial = tf.constant(0.1, shape=shape)
+        return tf.Variable(initial, name=name)
 
 
 def basic_tokenizer(sentence, word_split=re.compile(b"([.,!?\"':;)(])")):
@@ -278,120 +388,75 @@ def read():
             words = basic_tokenizer(line)
             for w in words:
                 vocabulary[w] += 1
-            raw_tokens.extend(words)
-
-    # Add STOP Symbols after Periods
-    stop_list = []
-    for i in raw_tokens:
-        if i == '.':
-            stop_list.extend([i, STOP])
-        else:
-            stop_list.append(i)
+            raw_tokens.extend([STOP] + words)
 
     # Create the vocabulary
     vocab_list = [UNK, STOP] + sorted(vocabulary, key=vocabulary.get, reverse=True)
-    vocabulary = {vocab_list[i]: i for i in range(MAX_VOCAB_SIZE) if i < len(vocab_list)}
+    vocabulary = {vocab_list[i]: i for i in range(FLAGS.max_vocab_size) if i < len(vocab_list)}
 
     # Use the vocabulary to vectorize the data, return x, y, and vocabulary
-    data = map(lambda tok: vocabulary.get(tok, UNK_ID), stop_list)
+    data = map(lambda tok: vocabulary.get(tok, UNK_ID), raw_tokens)
     train_len = int(len(data) * 0.9)
     return np.array(data[:train_len - 1], dtype=int), np.array(data[1:train_len], dtype=int), \
         np.array(data[train_len:-1], dtype=int), np.array(data[train_len + 1:], dtype=int), \
         vocabulary, vocab_list
 
-def weight_variable(shape, name):
-        initial = tf.truncated_normal(shape, stddev=0.1)
-        return tf.Variable(initial, name=name)
+# Main Training Block
+if __name__ == "__main__":
+    # Preprocess and vectorize the data
+    x, y, test_x, test_y, vocab, vocab_list = read()
 
-def bias_variable(shape, name):
-    initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial, name=name)
+    # Launch Tensorflow Session
+    print 'Launching Tensorflow Session'
+    with tf.Session() as sess:
+        # Instantiate Model
+        rnn_langmod = RNNLangmod(len(vocab), FLAGS.embedding_size, FLAGS.num_steps,
+                                 FLAGS.hidden_size, FLAGS.batch_size, FLAGS.learning_rate)
 
-# Preprocess and vectorize the data
-x, y, test_x, test_y, vocab, vocab_list = read()
+        # Initialize all Variables
+        sess.run(tf.initialize_all_variables())
 
-# Setup Placeholders
-X = tf.placeholder(tf.int32, shape=[None, NUM_STEPS])
-Y = tf.placeholder(tf.int32, shape=[None, NUM_STEPS])
-keep_prob = tf.placeholder(tf.float32)
+        # Start Training
+        ex_bsz, bsz, steps = FLAGS.batch_size * FLAGS.num_steps, FLAGS.batch_size, FLAGS.num_steps
+        for epoch in range(FLAGS.num_epochs):
+            state, loss, iters, start_time = sess.run(rnn_langmod.initial_state), 0., 0, time.time()
+            for start, end in zip(range(0, len(x) - ex_bsz, ex_bsz), range(ex_bsz, len(x), ex_bsz)):
+                # Build the Feed Dictionary, with inputs, outputs, dropout probability, and states.
+                feed_dict = {rnn_langmod.X: x[start:end].reshape(bsz, steps),
+                             rnn_langmod.Y: y[start:end].reshape(bsz, steps),
+                             rnn_langmod.keep_prob: FLAGS.dropout_prob,
+                             rnn_langmod.initial_state[0]: state[0],
+                             rnn_langmod.initial_state[1]: state[1]}
 
-# Embedding Matrix
-E = weight_variable([MAX_VOCAB_SIZE, EMBEDDING_SIZE], 'Embedding')
+                # Run the training operation with the Feed Dictionary, fetch loss and update state.
+                curr_loss, _, state = sess.run([rnn_langmod.loss_val, rnn_langmod.train_op,
+                                                rnn_langmod.final_state], feed_dict=feed_dict)
 
-# Basic LSTM Cell
-cell = tf.nn.rnn_cell.BasicLSTMCell(HIDDEN_SIZE)
-initial_state = cell.zero_state(BSZ, tf.float32)
+                # Update counters
+                loss, iters = loss + curr_loss, iters + steps
 
-# Softmax Output
-softmax_w = weight_variable([HIDDEN_SIZE, MAX_VOCAB_SIZE], 'Softmax_Weight')
-softmax_b = weight_variable([MAX_VOCAB_SIZE], 'Softmax_Bias')
+                # Print Evaluation Statistics
+                if start % FLAGS.eval_every == 0:
+                    print 'Epoch {} Words {} to {} Perplexity: {}, took {} seconds!'.format(
+                        epoch, start, end, np.exp(loss / iters), time.time() - start_time)
+                    loss, iters = 0.0, 0
 
-# Feed input through the Embedding Layer, Dropout.
-emb = tf.nn.embedding_lookup(E, X)                                   # Shape [bsz, steps, hidden]
-drop_emb = tf.nn.dropout(emb, keep_prob)
+        # Evaluate Test Perplexity
+        test_loss, test_iters, state = 0., 0, sess.run(rnn_langmod.initial_state)
+        for s, e in zip(range(0, len(test_x - ex_bsz), ex_bsz), range(ex_bsz, len(test_x), ex_bsz)):
+            # Build the Feed Dictionary, with inputs, outputs, dropout probability, and states.
+            feed_dict = {rnn_langmod.X: test_x[s:e].reshape(bsz, steps),
+                         rnn_langmod.Y: test_y[s:e].reshape(bsz, steps),
+                         rnn_langmod.keep_prob: 1.0,
+                         rnn_langmod.initial_state[0]: state[0],
+                         rnn_langmod.initial_state[1]: state[1]}
 
-# Feed input through dynamic_rnn
-out, f_state = tf.nn.dynamic_rnn(cell, drop_emb,                     # Shape [bsz, steps, hidden]
-                                 initial_state=initial_state)
+            # Fetch the loss, and final state
+            curr_loss, state = sess.run([rnn_langmod.loss_val, rnn_langmod.final_state],
+                                        feed_dict=feed_dict)
 
-# Reshape the outputs into a single 2D Tensor
-outputs = tf.reshape(out, [-1, HIDDEN_SIZE])                         # Shape [bsz * steps, hidden]
+            # Update counters
+            test_loss, test_iters = test_loss + curr_loss, test_iters + steps
 
-# Feed through final layer, compute logits
-logits = tf.matmul(outputs, softmax_w) + softmax_b                   # Shape [bsz * steps, vocab]
-
-# Compute Loss
-seq_loss = tf.nn.seq2seq.sequence_loss_by_example([logits], [tf.reshape(Y, [-1])],
-                                                  [tf.ones([BSZ * NUM_STEPS])])
-loss_val = tf.reduce_sum(seq_loss) / BSZ
-
-# Training Operation
-train_op = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss_val)
-
-# Launch Tensorflow Session
-print 'Launching Tensorflow Session'
-sess = tf.Session()
-
-# Initialize all Variables
-sess.run(tf.initialize_all_variables())
-
-# Start Training
-ex_bsz, bsz, steps = BSZ * NUM_STEPS, BSZ, NUM_STEPS
-for epoch in range(NUM_EPOCHS):
-    state, loss, iters, start_time = sess.run(initial_state), 0., 0, time.time()
-    for start, end in zip(range(0, len(x) - ex_bsz, ex_bsz), range(ex_bsz, len(x), ex_bsz)):
-        # Build the Feed Dictionary, with inputs, outputs, dropout probability, and states.
-        feed_dict = {X: x[start:end].reshape(bsz, steps),
-                     Y: y[start:end].reshape(bsz, steps),
-                     keep_prob: DROPOUT_PROB,
-                     initial_state: state}
-
-        # Run the training operation with the Feed Dictionary, fetch loss and update state.
-        curr_loss, _, state = sess.run([loss_val, train_op, f_state], feed_dict=feed_dict)
-
-        # Update counters
-        loss, iters = loss + curr_loss, iters + steps
-
-        # Print Evaluation Statistics
-        if start % EVAL_EVERY == 0:
-            print 'Epoch {} Words {} to {} Perplexity: {}, took {} seconds!'.format(
-                epoch, start, end, np.exp(loss / iters), time.time() - start_time)
-            loss, iters = 0.0, 0
-
-# Evaluate Test Perplexity
-test_loss, test_iters, state = 0., 0, sess.run(initial_state)
-for s, e in zip(range(0, len(test_x - ex_bsz), ex_bsz), range(ex_bsz, len(test_x), ex_bsz)):
-    # Build the Feed Dictionary, with inputs, outputs, dropout probability, and states.
-    feed_dict = {X: test_x[s:e].reshape(bsz, steps),
-                 Y: test_y[s:e].reshape(bsz, steps),
-                 keep_prob: 1.0,
-                 initial_state: state}
-
-    # Fetch the loss, and final state
-    curr_loss, state = sess.run([loss_val, f_state], feed_dict=feed_dict)
-
-    # Update counters
-    test_loss, test_iters = test_loss + curr_loss, test_iters + steps
-
-# Print Final Output
-print 'Test Perplexity: {}'.format(np.exp(test_loss / test_iters))
+        # Print Final Output
+        print 'Test Perplexity: {}'.format(np.exp(test_loss / test_iters))
