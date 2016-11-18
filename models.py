@@ -22,20 +22,38 @@ class Model():
 
         cell = cell_fn(args.rnn_size, state_is_tuple=True)
 
+        # this command creates a stacked LSTM model with the specified number of layers
         self.cell = cell = rnn_cell.MultiRNNCell([cell] * args.num_layers, state_is_tuple=True)
 
+        # the input data, also known as the x vector
         self.input_data = tf.placeholder(tf.int32, [args.batch_size, args.seq_length])
+
+        # the output data, also known as the y vector
         self.targets = tf.placeholder(tf.int32, [args.batch_size, args.seq_length])
+
+        # the initial state of the model
         self.initial_state = cell.zero_state(args.batch_size, tf.float32)
 
+        # creates a variable graph that can be reused, and initializes the variables
         with tf.variable_scope('rnnlm'):
+
+            # the softmax weights
             softmax_w = tf.get_variable("softmax_w", [args.rnn_size, args.vocab_size])
+
+            # the softma biases
             softmax_b = tf.get_variable("softmax_b", [args.vocab_size])
+
+            # this creates a graph that uses the computer's CPU
             with tf.device("/cpu:0"):
+
+                # the embedding matrix
                 embedding = tf.get_variable("embedding", [args.vocab_size, args.rnn_size])
+
+                # feeding the input data through the embedding layer
                 inputs = tf.split(1, args.seq_length, tf.nn.embedding_lookup(embedding, self.input_data))
                 inputs = [tf.squeeze(input_, [1]) for input_ in inputs]
 
+        # don't really know what this does
         def loop(prev, _):
             prev = tf.matmul(prev, softmax_w) + softmax_b
             prev_symbol = tf.stop_gradient(tf.argmax(prev, 1))

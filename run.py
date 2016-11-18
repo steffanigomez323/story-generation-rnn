@@ -1,42 +1,47 @@
-""""
-Written by Steffani Gomez, smg1/@steffanigomez323
-This file will run the model with the given parameters.
-"""
+# """"
+# Written by Steffani Gomez, smg1/@steffanigomez323
+# This file will run the model with the given parameters.
+# """
+from __future__ import print_function
+import tensorflow as tf
 import argparse
 from utils import TextReader
 from model import Model
-import tensorflow as tf
+
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_txt', type=str, default='smallshakespeare.txt',
-                        help='the input text')
-    parser.add_argument('--lstm_size', type=int, default=256,
-                        help='the size of the LSTM layer')
-    parser.add_argument('--step_size', type=int, default=20,
-                        help='number of unrolled steps')
+    parser.add_argument('--input_text', type=str, default='smallshakespeare.txt',
+                        help='the path to the input text')
+    parser.add_argument('--lstm_size', type=int, default=128,
+                        help='size of the LSTM hidden state')
+    parser.add_argument('--num_layers', type=int, default=2,
+                        help='number of layers in the RNN')
     parser.add_argument('--batch_size', type=int, default=50,
-                        help='the size of a training batch')
-    parser.add_argument('--learning_rate', type=int, default=1e-4,
-                        help='the rate at which the model learns')
-    parser.add_argument('--dropout_rate', type=int, default=0.5,
-                        help='the keep probability for dropout')
-    parser.add_argument('--embedding_size', type=int, default=50,
-                        help='the embedding size')
-    parser.add_argument('--num_epochs', type=int, default=5,
-                        help='the number of epochs to train over')
-    parser.add_argument('--eval_every', type=int, default=10000,
-                        help='when to evaluate how the model is doing after this many training steps')
+                        help='minibatch size')
+    parser.add_argument('--step_size', type=int, default=50,
+                        help='the number of unrolled LSTM steps through backpropogation')
+    parser.add_argument('--num_epochs', type=int, default=50,
+                        help='number of epochs')
+    parser.add_argument('--learning_rate', type=float, default=1e-4,
+                        help='learning rate')
     args = parser.parse_args()
-    reader = TextReader(args.input_txt)
-    print("Data has been read in and processed.")
-    model = Model(batchsz=args.batch_size, dropout=args.dropout_rate, lstmsz=args.lstm_size,
-                  embeddingsz=args.embedding_size, learningrate=args.learning_rate, numepochs=args.num_epochs,
-                  stepsz=args.step_size, vocabsz=reader.data_length)
+    train(args)
+
+
+def train(args):
+    data_loader = TextReader(args.input_text, args.batch_size, args.step_size)
+    args.vocab_size = data_loader.vocab_size
+    print("The input file has been read and processed.")
+
+    model = Model(lstm_size=args.lstm_size, batch_size=args.batch_size, step_size=args.step_size,
+                  num_layers=args.num_layers, vocab_size=args.vocab_size, learning_rate=args.learning_rate)
+
     with tf.Session() as sess:
-        print("Starting to train the LSTM model.")
-        model.train(args.eval_every, sess, reader)
-        print("Training has been completed.")
+        print("Beginning to train the model...")
+        model.train(sess, args.num_epochs, data_loader)
+        print("The model has been trained.")
+
 
 if __name__ == '__main__':
     main()
