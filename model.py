@@ -5,6 +5,8 @@
 import tensorflow as tf
 import numpy as np
 import time
+import codecs
+import cPickle as pickle
 
 class Model():
     def __init__(self, lstm_size, num_layers, batch_size, step_size, vocab_size, learning_rate):
@@ -80,6 +82,10 @@ class Model():
                       .format(e * data_loader.num_batches + b,
                               num_epochs * data_loader.num_batches,
                               e, train_loss, end - start))
+
+    #def savemodel(self, filename):
+    #    with codecs.open(filename, 'w+') as f:
+    #        pickle.dump(self, f)
 
     def sample(self, sess, chars, vocab, num=200, prime='The ', sampling_type=1):
         state = sess.run(self.cell.zero_state(1, tf.float32))
