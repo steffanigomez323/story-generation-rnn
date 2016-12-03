@@ -2,6 +2,10 @@
 Written by Steffani Gomez, smg1/@steffanigomez323
 This file contains any classes that are not directly related to the rnn-model, such as the text loading class.
 """
+import sys
+
+reload(sys)
+sys.setdefaultencoding('utf8')
 import codecs
 import numpy as np
 import cPickle as pickle
@@ -15,7 +19,7 @@ class TextReader():
         self.batch_poointer = 0
         self.batch_size, self.step_size, self.step_batch_size = batchsz, numsteps, batchsz * numsteps
         self.processtext()
-        self.saveinputvocab(filename)
+        #self.saveinputvocab(filename)
 
     def processtext(self):
         """
@@ -54,5 +58,5 @@ class TextReader():
         :param filename: the name of the file in which to place the pickle object
         :return: nothing
         """
-        with codecs.open(filename, 'w+', encoding=self.encoding) as f:
+        with codecs.open(filename, 'w+', encoding=self.encoding, errors='replace') as f:
             pickle.dump(self, f)
