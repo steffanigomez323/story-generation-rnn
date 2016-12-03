@@ -1,2 +1,1 @@
-model_checkpoint_path: "shakespeare_50_50_100_2_128.ckpt"
-all_model_checkpoint_paths: "shakespeare_50_50_100_2_128.ckpt"
+
