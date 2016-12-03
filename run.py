@@ -23,11 +23,11 @@ def main():
                         help='size of the LSTM hidden state')
     parser.add_argument('--num_layers', type=int, default=2,
                         help='number of layers in the RNN')
-    parser.add_argument('--batch_size', type=int, default=50,
+    parser.add_argument('--batch_size', type=int, default=100,
                         help='minibatch size')
-    parser.add_argument('--step_size', type=int, default=50,
+    parser.add_argument('--step_size', type=int, default=100,
                         help='the number of unrolled LSTM steps through backpropogation')
-    parser.add_argument('--num_epochs', type=int, default=100,
+    parser.add_argument('--num_epochs', type=int, default=50,
                         help='number of epochs')
     parser.add_argument('--learning_rate', type=float, default=1e-4,
                         help='learning rate')
