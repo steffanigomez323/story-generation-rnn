@@ -17,6 +17,8 @@ def main():
                         help='the name of the model')
     parser.add_argument('--input_text', type=str, default='data/xfilesseason1.txt',
                         help='the path to the input text')
+    parser.add_argument('--output_dir', type=str, default='output/',
+                        help='the directory in which to place the output file.')
     parser.add_argument('--lstm_size', type=int, default=128,
                         help='size of the LSTM hidden state')
     parser.add_argument('--num_layers', type=int, default=2,
@@ -25,7 +27,7 @@ def main():
                         help='minibatch size')
     parser.add_argument('--step_size', type=int, default=50,
                         help='the number of unrolled LSTM steps through backpropogation')
-    parser.add_argument('--num_epochs', type=int, default=50,
+    parser.add_argument('--num_epochs', type=int, default=100,
                         help='number of epochs')
     parser.add_argument('--learning_rate', type=float, default=1e-4,
                         help='learning rate')
@@ -37,6 +39,9 @@ def main():
     args.save_vocab_file = args.save_vocab_file + args.label + '.pkl'
     args.save_model_file = args.save_model_file + args.label + '_' + str(args.batch_size) + '_' + str(args.step_size) + "_" +\
                            str(args.num_epochs) + '_' + str(args.num_layers) + '_' + str(args.lstm_size) + '.ckpt'
+    args.output_file = args.output_dir + args.label + '_' + str(args.batch_size) + '_' + str(args.step_size) + "_" +\
+                           str(args.num_epochs) + '_' + str(args.num_layers) + '_' + str(args.lstm_size) + '.txt'
+
     textloader = train(args)
     samplefrommodel(args, textloader)
 
@@ -78,6 +83,8 @@ def samplefrommodel(args, textloader):
         saver.restore(sess, args.save_model_file)
         print("Model has been loaded.")
         sampled_text = model.sample(sess=sess, chars=textloader.chars, vocab=textloader.mapping)
+        with codecs.open(args.output_file, 'w+', encoding='UTF-8') as f:
+            f.write(sampled_text)
         print(sampled_text)
         print("Model has been sampled from.")
 
