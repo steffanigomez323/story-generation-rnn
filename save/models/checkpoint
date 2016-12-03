@@ -1,2 +1,2 @@
-model_checkpoint_path: "xfilesfilesseason1and250_50_50_2_128.ckpt"
-all_model_checkpoint_paths: "xfilesfilesseason1and250_50_50_2_128.ckpt"
+model_checkpoint_path: "lolita_50_50_50_2_128.ckpt"
+all_model_checkpoint_paths: "lolita_50_50_50_2_128.ckpt"
