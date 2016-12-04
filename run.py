@@ -17,6 +17,8 @@ def main():
                         help='the name of the model')
     parser.add_argument('--input_text', type=str, default='data/xfilesseason1.txt',
                         help='the path to the input text')
+    parser.add_argument('--words', type=bool, default=True,
+                        help='boolean variable that determines whether genereate text by word or by character')
     parser.add_argument('--output_dir', type=str, default='output/',
                         help='the directory in which to place the output file.')
     parser.add_argument('--lstm_size', type=int, default=128,
@@ -42,14 +44,15 @@ def main():
     args.output_file = args.output_dir + args.label + '_' + str(args.batch_size) + '_' + str(args.step_size) + "_" +\
                            str(args.num_epochs) + '_' + str(args.num_layers) + '_' + str(args.lstm_size) + '.txt'
 
-    textloader = train(args)
+    #textloader = train(args)
+    textloader = TextReader(args.input_text, args.batch_size, args.step_size, args.words, args.save_vocab_file)
     samplefrommodel(args, textloader)
 
 
 def train(args):
     #with codecs.open(args.save_vocab_file) as vocab:
     #    textloader = pickle.load(vocab)
-    textloader = TextReader(args.input_text, args.batch_size, args.step_size, args.save_vocab_file)
+    textloader = TextReader(args.input_text, args.batch_size, args.step_size, args.words, args.save_vocab_file)
     print("Vocab has been loaded.")
     #with codecs.open(args.save_vocab_file, 'w+', encoding="UTF-8", errors="ignore") as f:
     #    pickle.dump(textloader, f)
@@ -82,7 +85,7 @@ def samplefrommodel(args, textloader):
         # Restore variables from disk.
         saver.restore(sess, args.save_model_file)
         print("Model has been loaded.")
-        sampled_text = model.sample(sess=sess, chars=textloader.chars, vocab=textloader.mapping)
+        sampled_text = model.sample(sess=sess, vocab=textloader.vocab, vocabmapping=textloader.mapping)
         with codecs.open(args.output_file, 'w+', encoding='UTF-8') as f:
             f.write(sampled_text)
         print(sampled_text)

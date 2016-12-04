@@ -87,11 +87,11 @@ class Model():
     #    with codecs.open(filename, 'w+') as f:
     #        pickle.dump(self, f)
 
-    def sample(self, sess, chars, vocab, num=10000, prime='The', sampling_type=1):
+    def sample(self, sess, vocab, vocabmapping, num=10000, prime='The ', sampling_type=1):
         state = sess.run(self.cell.zero_state(1, tf.float32))
-        for char in prime[:-1]:
+        for v in prime.split()[:-1]:
             x = np.zeros((1, 1))
-            x[0, 0] = vocab[char]
+            x[0, 0] = vocabmapping[v]
             feed = {self.X: x, self.initial_state:state}
             [state] = sess.run([self.final_state], feed)
 
@@ -101,10 +101,10 @@ class Model():
             return(int(np.searchsorted(t, np.random.rand(1)*s)))
 
         ret = prime
-        char = prime[-1]
+        v = prime.split()[-1]
         for n in range(num):
             x = np.zeros((1, 1))
-            x[0, 0] = vocab[char]
+            x[0, 0] = vocabmapping[v]
             feed = {self.X: x, self.initial_state:state}
             [probs, state] = sess.run([self.probs, self.final_state], feed)
             p = probs[0]
@@ -112,14 +112,57 @@ class Model():
             if sampling_type == 0:
                 sample = np.argmax(p)
             elif sampling_type == 2:
-                if char == ' ':
+                if v == ' ':
                     sample = weighted_pick(p)
                 else:
                     sample = np.argmax(p)
             else: # sampling_type == 1 default:
                 sample = weighted_pick(p)
 
-            pred = chars[sample]
-            ret += pred
-            char = pred
+            pred = vocab[sample]
+            ret += " " + pred
+            v = pred
         return ret
+
+
+# state = sess.run(self.cell.zero_state(1, tf.float32))
+# if not len(prime) or prime == " ":
+#     prime = random.choice(list(vocab.keys()))
+# print (prime)
+# for word in prime.split()[:-1]:
+#     print (word)
+#     x = np.zeros((1, 1))
+#     x[0, 0] = vocab.get(word, 0)
+#     feed = {self.input_data: x, self.initial_state: state}
+#     [state] = sess.run([self.final_state], feed)
+#
+#
+# def weighted_pick(weights):
+#     t = np.cumsum(weights)
+#     s = np.sum(weights)
+#     return (int(np.searchsorted(t, np.random.rand(1) * s)))
+#
+#
+# ret = prime
+# word = prime.split()[-1]
+# for n in range(num):
+#     x = np.zeros((1, 1))
+#     x[0, 0] = vocab.get(word, 0)
+#     feed = {self.input_data: x, self.initial_state: state}
+#     [probs, state] = sess.run([self.probs, self.final_state], feed)
+#     p = probs[0]
+#
+#     if sampling_type == 0:
+#         sample = np.argmax(p)
+#     elif sampling_type == 2:
+#         if word == '\n':
+#             sample = weighted_pick(p)
+#         else:
+#             sample = np.argmax(p)
+#     else:  # sampling_type == 1 default:
+#         sample = weighted_pick(p)
+#
+#     pred = words[sample]
+#     ret += ' ' + pred
+#     word = pred
+# return ret
