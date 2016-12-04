@@ -1,2 +1,2 @@
-model_checkpoint_path: "xfilesseason1_50_50_100_2_128_True.ckpt"
-all_model_checkpoint_paths: "xfilesseason1_50_50_100_2_128_True.ckpt"
+model_checkpoint_path: "edgarallenpoe_50_50_100_2_128_True.ckpt"
+all_model_checkpoint_paths: "edgarallenpoe_50_50_100_2_128_True.ckpt"
