@@ -31,9 +31,9 @@ def main():
                         help='number of epochs')
     parser.add_argument('--learning_rate', type=float, default=1e-4,
                         help='learning rate')
-    parser.add_argument('--save_vocab_file', type=str, default='save/vocab/',#xfilesseason1.pkl',
+    parser.add_argument('--save_vocab_file', type=str, default='save/vocab/',
                         help='the location in which to save the vocab pkl file')
-    parser.add_argument('--save_model_file', type=str, default='save/models/',#'save/models/smallshakespearemodel50_50_50_2_128.ckpt',
+    parser.add_argument('--save_model_file', type=str, default='save/models/',
                         help='the location in which to save the model pkl file')
     args = parser.parse_args()
     args.save_vocab_file = args.save_vocab_file + args.label + '.pkl'

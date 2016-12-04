@@ -1,2 +1,2 @@
-model_checkpoint_path: "quentintarantino_50_50_100_2_128.ckpt"
-all_model_checkpoint_paths: "quentintarantino_50_50_100_2_128.ckpt"
+model_checkpoint_path: "asongoffireandice_100_100_50_2_128.ckpt"
+all_model_checkpoint_paths: "asongoffireandice_100_100_50_2_128.ckpt"
