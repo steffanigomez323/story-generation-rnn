@@ -17,8 +17,8 @@ def main():
                         help='the name of the model')
     parser.add_argument('--input_text', type=str, default='data/xfilesseason1.txt',
                         help='the path to the input text')
-    parser.add_argument('--words', type=bool, default=True,
-                        help='boolean variable that determines whether genereate text by word or by character')
+    parser.add_argument('--words', type=str, default='true',
+                        help='determines whether generate text by word or by character')
     parser.add_argument('--output_dir', type=str, default='output/',
                         help='the directory in which to place the output file.')
     parser.add_argument('--lstm_size', type=int, default=128,
@@ -38,6 +38,10 @@ def main():
     parser.add_argument('--save_model_file', type=str, default='save/models/',
                         help='the location in which to save the model pkl file')
     args = parser.parse_args()
+    if args.words.lower() == 'false':
+        args.words = False
+    elif args.words.lower() == 'true':
+        args.words = True
     args.save_vocab_file = args.save_vocab_file + args.label + '.pkl'
     args.save_model_file = args.save_model_file + args.label + '_' + str(args.batch_size) + '_' + str(args.step_size) + "_" +\
                            str(args.num_epochs) + '_' + str(args.num_layers) + '_' + str(args.lstm_size) + '_' + str(args.words) + '.ckpt'
@@ -52,7 +56,7 @@ def main():
 def train(args):
     #with codecs.open(args.save_vocab_file) as vocab:
     #    textloader = pickle.load(vocab)
-    textloader = TextReader(args.input_text, args.batch_size, args.step_size, args.words, args.save_vocab_file)
+    textloader = TextReader(args.input_text, args.batch_size, args.step_size, args.save_vocab_file, args.words)
     print("Vocab has been loaded.")
     #with codecs.open(args.save_vocab_file, 'w+', encoding="UTF-8", errors="ignore") as f:
     #    pickle.dump(textloader, f)
@@ -60,6 +64,7 @@ def train(args):
     model = Model(lstm_size=args.lstm_size, batch_size=args.batch_size, step_size=args.step_size,
                   num_layers=args.num_layers, vocab_size=args.vocab_size, learning_rate=args.learning_rate)
     saver = tf.train.Saver(tf.all_variables())
+    print(textloader.vocab)
     with tf.Session() as sess:
         print("Beginning to train the model...")
         model.train(sess, args.num_epochs, textloader)
