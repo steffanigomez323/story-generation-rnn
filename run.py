@@ -25,11 +25,11 @@ def main():
                         help='size of the LSTM hidden state')
     parser.add_argument('--num_layers', type=int, default=2,
                         help='number of layers in the RNN')
-    parser.add_argument('--batch_size', type=int, default=100,
+    parser.add_argument('--batch_size', type=int, default=50,
                         help='minibatch size')
-    parser.add_argument('--step_size', type=int, default=100,
+    parser.add_argument('--step_size', type=int, default=50,
                         help='the number of unrolled LSTM steps through backpropogation')
-    parser.add_argument('--num_epochs', type=int, default=50,
+    parser.add_argument('--num_epochs', type=int, default=100,
                         help='number of epochs')
     parser.add_argument('--learning_rate', type=float, default=1e-4,
                         help='learning rate')
@@ -40,12 +40,12 @@ def main():
     args = parser.parse_args()
     args.save_vocab_file = args.save_vocab_file + args.label + '.pkl'
     args.save_model_file = args.save_model_file + args.label + '_' + str(args.batch_size) + '_' + str(args.step_size) + "_" +\
-                           str(args.num_epochs) + '_' + str(args.num_layers) + '_' + str(args.lstm_size) + '.ckpt'
+                           str(args.num_epochs) + '_' + str(args.num_layers) + '_' + str(args.lstm_size) + '_' + str(args.words) + '.ckpt'
     args.output_file = args.output_dir + args.label + '_' + str(args.batch_size) + '_' + str(args.step_size) + "_" +\
-                           str(args.num_epochs) + '_' + str(args.num_layers) + '_' + str(args.lstm_size) + '.txt'
+                           str(args.num_epochs) + '_' + str(args.num_layers) + '_' + str(args.lstm_size) + '_' + str(args.words) + '.txt'
 
-    #textloader = train(args)
-    textloader = TextReader(args.input_text, args.batch_size, args.step_size, args.words, args.save_vocab_file)
+    textloader = train(args)
+    #textloader = TextReader(args.input_text, args.batch_size, args.step_size, args.words, args.save_vocab_file)
     samplefrommodel(args, textloader)
 
 

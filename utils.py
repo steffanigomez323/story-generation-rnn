@@ -27,7 +27,9 @@ class TextReader():
         Very basic tokenizer: split the sentence into a list of tokens.
         """
         words = []
-        for space_separated_fragment in sentence.strip().split():
+        space_fragments = re.findall(r'\S+|\n', sentence)
+        for space_separated_fragment in space_fragments:
+        #for space_separated_fragment in sentence.split():
             words.extend(re.split(word_split, space_separated_fragment))
         return [w for w in words if w]
 

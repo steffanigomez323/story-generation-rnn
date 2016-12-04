@@ -87,7 +87,7 @@ class Model():
     #    with codecs.open(filename, 'w+') as f:
     #        pickle.dump(self, f)
 
-    def sample(self, sess, vocab, vocabmapping, num=10000, prime='The ', sampling_type=1):
+    def sample(self, sess, vocab, vocabmapping, num=5000, prime='The ', sampling_type=1):
         state = sess.run(self.cell.zero_state(1, tf.float32))
         for v in prime.split()[:-1]:
             x = np.zeros((1, 1))
