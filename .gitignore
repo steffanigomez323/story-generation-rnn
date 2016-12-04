@@ -3,3 +3,5 @@
 *.iml
 *.pyc
 literature/
+save/models/asongoffireandice_25_25_100_2_128_True.ckpt
+save/models/finneganswake_50_50_100_2_128_True.ckpt
