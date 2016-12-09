@@ -13,7 +13,7 @@ import re
 
 class TextReader():
 
-    def __init__(self, text, batchsz, numsteps, filename, words, encoding="utf-8"):
+    def __init__(self, text, batchsz, numsteps, words, encoding="utf-8"):
         # type: (object, object) -> object
         self.input = text
         self.encoding = encoding
@@ -45,7 +45,7 @@ class TextReader():
                 for line in f:
                     words = self.basic_tokenizer(line)
                     for w in words:
-                        text.append(w)
+                        text.append(w.encode('utf-8'))
                         #vocabulary[w] += 1
                     #raw_tokens.extend([STOP] + words)
                 #text = f.read()
@@ -62,7 +62,7 @@ class TextReader():
 
             with codecs.open(self.input, 'r', encoding=self.encoding) as f:
                 text = f.read()
-            self.vocab = list(''.join(sorted(set(text))))
+            self.vocab = list(''.join(sorted(set(text)).encode('utf-8')))
             self.vocab_size = len(self.vocab)
             self.mapping = dict(zip(self.vocab, range(self.vocab_size)))
             self.data = np.array(list(map(self.mapping.get, text)))

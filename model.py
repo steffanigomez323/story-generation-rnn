@@ -6,7 +6,10 @@ import tensorflow as tf
 import numpy as np
 import time
 import codecs
-import cPickle as pickle
+import gensim
+from gensim import corpora
+import string
+import re
 
 class Model():
     def __init__(self, lstm_size, num_layers, batch_size, step_size, vocab_size, learning_rate):
@@ -122,7 +125,7 @@ class Model():
             pred = vocab[sample]
             ret += " " + pred
             v = pred
-        return ret
+        return ret.encode('utf-8')
 
 
 # state = sess.run(self.cell.zero_state(1, tf.float32))
@@ -166,3 +169,66 @@ class Model():
 #     ret += ' ' + pred
 #     word = pred
 # return ret
+
+
+class LDAModel():
+
+    def __init__(self, file, numtopics, epochs, doclen):
+        # Creating the object for LDA model using gensim library
+        Lda = gensim.models.ldamodel.LdaModel
+
+        docs = []
+        linecount = 0
+        with codecs.open(file, 'r', encoding='utf-8') as f:
+            for line in f:
+                words = self.basic_tokenizer(line)
+                for w in words:
+                    docs.append(w.encode('utf-8'))
+                linecount += 1
+
+        docs_complete = []
+        #doclen = np.random.poisson(lam=int(10), size=1)
+        #doclen = 10
+        for i in range(0, len(docs), doclen):
+            docs_complete.append(' '.join(docs[i:i + doclen]))
+
+
+        docs_complete_clean = [doc.encode('utf-8').split(" ") for doc in docs_complete]
+
+        dictionary = corpora.Dictionary(docs_complete_clean)
+        # Converting list of documents (corpus) into Document Term Matrix using dictionary prepared above.
+        doc_term_matrix = [dictionary.doc2bow(doc) for doc in docs_complete_clean]
+
+        # Running and Training LDA model on the document term matrix.
+        self.model = Lda(doc_term_matrix, num_topics=numtopics, id2word=dictionary, passes=epochs)
+
+        wholetext = []
+
+        for doc in docs_complete:
+            for w in self.basic_tokenizer(doc):
+                wholetext.append(w.encode('utf-8'))
+
+        self.topics = self.model.get_document_topics(dictionary.doc2bow(wholetext), minimum_probability=0)
+        self.mapping = dictionary
+
+
+    def basic_tokenizer(self, sentence, word_split=re.compile(b"([.,!?\"':;)(])")):
+        """
+        Very basic tokenizer: split the sentence into a list of tokens.
+        """
+        words = []
+        space_fragments = re.findall(r'\S+|\n', sentence)
+        for space_separated_fragment in space_fragments:
+            # for space_separated_fragment in sentence.split():
+            words.extend(re.split(word_split, space_separated_fragment))
+        return [w for w in words if w]
+
+    def generatetext(self, numwords=50):
+        res = []
+        for i in range(numwords):
+            topic = np.random.choice([int(i[0]) for i in self.topics], p=[float(i[1]) for i in self.topics])
+            worddist = self.model.get_topic_terms(topic, len(self.mapping.keys()))
+            word = np.random.choice([int(i[0]) for i in worddist], p=[float(i[1]) for i in worddist])
+            res.append(self.mapping.get(word).encode('utf-8'))
+        #print(' '.join(res))
+        return res
